@@ -1,122 +1,134 @@
-# Weather Data RAG Explorer
+# Weather RAG Explorer
 
-## 🚀 Development Environment Setup
+A command-line tool for exploring weather data using AWS Bedrock and RAG (Retrieval-Augmented Generation) technology. This application enables natural language querying of weather datasets, providing AI-generated insights powered by Claude.
 
-### Prerequisites
+## Features
 
-- Python Version Management Tool (pyenv recommended)
-- Rust compiler
-- AWS Account (optional, for full functionality)
+- Natural language queries for weather data analysis
+- Semantic search using vector embeddings
+- AI-powered responses using Claude models
+- Support for local CSV files and NOAA precipitation datasets
+- Comprehensive AWS Bedrock access diagnostics
 
-### 1. Install Python Version Management
+## Prerequisites
 
-#### macOS (Homebrew)
+- Python 3.8+
+- AWS account with Bedrock access enabled
+- AWS credentials configured (via AWS CLI or environment variables)
+- AWS Bedrock model subscriptions for:
+  - An embedding model (e.g., Amazon Titan Embeddings)
+  - A language model (e.g., Claude)
+
+## Installation
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/weather-rag-explorer.git
+   cd weather-rag-explorer
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configure AWS credentials:
+   ```bash
+   aws configure
+   ```
+
+## Usage
+
+### Check AWS Bedrock Access
+
+Before running the main application, verify your AWS Bedrock access:
+
 ```bash
-# Install pyenv
-brew install pyenv
-
-# Add pyenv to shell
-echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
-echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
-echo 'eval "$(pyenv init --path)"' >> ~/.zshrc
-echo 'eval "$(pyenv init -)"' >> ~/.zshrc
-
-# Reload shell
-source ~/.zshrc
+python weather_rag_cli.py --check-only
 ```
 
-#### Linux
-```bash
-# Install dependencies
-sudo apt-get update
-sudo apt-get install make build-essential libssl-dev zlib1g-dev \
-    libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+This will check if you have access to the necessary AWS Bedrock models without loading any data.
 
-# Install pyenv
-curl https://pyenv.run | bash
-
-# Add to shell (adjust for your shell, e.g., .bashrc or .zshrc)
-echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
-echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
-echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-```
-
-### 2. Install Python and Create Virtual Environment
+### Run with Default Settings
 
 ```bash
-# Install Python 3.12
-pyenv install 3.12.2
-
-# Set local Python version for the project
-pyenv local 3.12.2
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate  # Unix/macOS
-# or
-venv\Scripts\activate  # Windows
-```
-
-### 3. Install Project Dependencies
-
-```bash
-# Ensure virtual environment is activated
-pip install --upgrade pip
-
-# Install Rust (if not already installed)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install project dependencies
-pip install -r requirements.txt
-```
-
-## 🌟 Project Overview
-
-A CLI-based weather data exploration tool using Retrieval-Augmented Generation (RAG) to provide intelligent insights into historical climate data.
-
-## 🖥️ Running the Application
-
-```bash
-# Ensure virtual environment is activated
 python weather_rag_cli.py
-
-# Specify a different year
-python weather_rag_cli.py --year 2020
 ```
 
-## 🛠️ Development Workflow
+This will analyze precipitation data for 2022 from NOAA's public dataset.
+
+### Analyze a Specific Year
 
 ```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Deactivate when done
-deactivate
+python weather_rag_cli.py --year 2021
 ```
 
-## 🔍 Troubleshooting
+### Use a Local CSV File
 
-### Common Issues
-- Ensure correct Python version is used
-- Verify virtual environment is activated
-- Check Rust installation
-- Confirm all dependencies are installed
+```bash
+python weather_rag_cli.py --local-file path/to/your/weather_data.csv
+```
 
-## 📦 Dependencies
-- Python 3.12.x
-- Rust
-- AWS Bedrock (optional)
+The CSV file should have at least one of these columns: DATE, TMAX, TMIN, PRCP.
 
-## 🤝 Contributing
-1. Fork the repository
-2. Set up development environment
-3. Create feature branch
-4. Commit changes
-5. Push and create Pull Request
+## Example Queries
 
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for details.
+Once the application is running, you can ask questions like:
+
+- "What was the average precipitation in July?"
+- "Which month had the highest temperatures?"
+- "Was there a noticeable warming trend over the course of the year?"
+- "Compare precipitation patterns between summer and winter."
+- "What were the top 5 hottest days of the year?"
+
+## AWS Bedrock Model Access
+
+The application requires access to:
+
+1. An embedding model (one of):
+   - amazon.titan-embed-text-v2:0
+   - amazon.titan-embed-g1-text-02
+   - amazon.titan-multimodal-embed-g1:0
+   - amazon.titan-embed-text-v1
+   - cohere.embed-english-v3
+   - cohere.embed-multilingual-v3
+
+2. A language model (one of):
+   - anthropic.claude-3-7-sonnet-20250219-v1:0
+   - anthropic.claude-3-5-haiku-20241022-v1:0
+   - anthropic.claude-3-sonnet-20240229-v1:0
+   - anthropic.claude-3-haiku-20240307-v1:0
+
+You can request access to these models in the AWS Bedrock console under "Model access".
+
+## AWS Region Configuration
+
+By default, the application respects the AWS region configuration in your AWS profile. If you have a preferred region, set it with:
+
+```bash
+aws configure set region us-west-2
+```
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Run `--check-only` to verify model access
+2. Make sure your AWS credentials are configured
+3. Check that you have requested access to the models in the AWS Bedrock console
+4. Verify your AWS region settings with `aws configure get region`
+5. Ensure boto3 is updated to at least version 1.28.0
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions welcome! Please feel free to submit a Pull Request.
