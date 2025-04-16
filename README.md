@@ -1,134 +1,120 @@
 # Weather RAG Explorer
 
-A command-line tool for exploring weather data using AWS Bedrock and RAG (Retrieval-Augmented Generation) technology. This application enables natural language querying of weather datasets, providing AI-generated insights powered by Claude.
+An AI-powered tool for exploring and analyzing historical weather data using AWS Bedrock and RAG (Retrieval Augmented Generation) technology.
+
+## Overview
+
+Weather RAG Explorer leverages AWS Bedrock's foundation models to provide intelligent analysis of weather data. The application can process precipitation data from NOAA's open datasets or from local files, allowing meteorologists, researchers, and weather enthusiasts to query weather patterns using natural language.
 
 ## Features
 
-- Natural language queries for weather data analysis
-- Semantic search using vector embeddings
-- AI-powered responses using Claude models
-- Support for local CSV files and NOAA precipitation datasets
-- Comprehensive AWS Bedrock access diagnostics
+- **Natural Language Queries**: Ask questions about weather data in plain English
+- **AWS Bedrock Integration**: Utilizes AWS's powerful foundation models for embedding and analysis
+- **NOAA Data Integration**: Connects to NOAA's open weather datasets
+- **Vector Search**: Uses FAISS for efficient similarity search of weather records
+- **Interactive CLI**: User-friendly command-line interface for data exploration
+- **Robust Error Handling**: Comprehensive error detection and fallback mechanisms
+- **Comprehensive Analysis Mode**: Analyze all available records for broader questions
 
-## Prerequisites
+## New in This Version
 
-- Python 3.8+
-- AWS account with Bedrock access enabled
-- AWS credentials configured (via AWS CLI or environment variables)
-- AWS Bedrock model subscriptions for:
-  - An embedding model (e.g., Amazon Titan Embeddings)
-  - A language model (e.g., Claude)
+- **Comprehensive Mode**: Now supports analyzing all available records instead of just the top 5 matches
+- **Mode Switching**: Toggle between comprehensive and default modes during runtime
+- **Statistical Summaries**: Automatically calculates monthly averages and other statistics for large datasets
+- **Enhanced Context**: Provides better context for the LLM to generate more thorough responses
+- **Improved Prompt Engineering**: Updated prompt template to focus on statistical observations and trends
+
+## Requirements
+
+- Python 3.8 or higher
+- AWS account with Bedrock access
+- Required Python packages: boto3, pandas, numpy, faiss, netCDF4, xarray, s3fs, click, rich, langchain
 
 ## Installation
 
 1. Clone this repository:
-   ```bash
-   git clone https://github.com/yourusername/weather-rag-explorer.git
-   cd weather-rag-explorer
-   ```
+```bash
+git clone https://github.com/yourusername/weather-rag-explorer.git
+cd weather-rag-explorer
+```
 
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. Install required dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Configure AWS credentials:
-   ```bash
-   aws configure
-   ```
+3. Configure AWS credentials:
+```bash
+aws configure
+```
 
 ## Usage
 
-### Check AWS Bedrock Access
-
-Before running the main application, verify your AWS Bedrock access:
-
-```bash
-python weather_rag_cli.py --check-only
-```
-
-This will check if you have access to the necessary AWS Bedrock models without loading any data.
-
-### Run with Default Settings
+### Basic Usage
 
 ```bash
 python weather_rag_cli.py
 ```
 
-This will analyze precipitation data for 2022 from NOAA's public dataset.
+This will start the application in default mode, which analyzes the top 5 most relevant records for each query.
 
-### Analyze a Specific Year
+### Advanced Options
 
 ```bash
+# Start in comprehensive mode (analyze all records)
+python weather_rag_cli.py --use-all-records
+
+# Check Bedrock model access without running the application
+python weather_rag_cli.py --check-only
+
+# Specify a different year of data to analyze
 python weather_rag_cli.py --year 2021
+
+# Use a local CSV file instead of fetching data from AWS S3
+python weather_rag_cli.py --local-file path/to/your/data.csv
 ```
 
-### Use a Local CSV File
+### Interactive Commands
 
-```bash
-python weather_rag_cli.py --local-file path/to/your/weather_data.csv
-```
+During the interactive session, you can use the following commands:
 
-The CSV file should have at least one of these columns: DATE, TMAX, TMIN, PRCP.
+- `toggle mode` - Switch between comprehensive mode and default mode
+- `exit`, `quit`, or `q` - Exit the application
 
-## Example Queries
+### Example Questions
 
-Once the application is running, you can ask questions like:
+Default mode works best with specific questions:
+- "What was the precipitation amount on July 3, 2022?"
+- "Compare the precipitation levels between July 2-3, 2022."
 
-- "What was the average precipitation in July?"
+Comprehensive mode works well with broader questions:
 - "Which month had the highest temperatures?"
-- "Was there a noticeable warming trend over the course of the year?"
-- "Compare precipitation patterns between summer and winter."
-- "What were the top 5 hottest days of the year?"
+- "What was the precipitation pattern throughout summer?"
+- "Is there a correlation between latitude and precipitation amounts?"
 
-## AWS Bedrock Model Access
+## AWS Bedrock Model Requirements
 
-The application requires access to:
+The application requires access to the following types of AWS Bedrock models:
 
-1. An embedding model (one of):
-   - amazon.titan-embed-text-v2:0
-   - amazon.titan-embed-g1-text-02
-   - amazon.titan-multimodal-embed-g1:0
-   - amazon.titan-embed-text-v1
-   - cohere.embed-english-v3
-   - cohere.embed-multilingual-v3
+- **Embedding Models**: At least one of these models must be available
+  - amazon.titan-embed-text-v2:0
+  - amazon.titan-embed-g1-text-02
+  - amazon.titan-multimodal-embed-g1:0
+  - cohere.embed-english-v3
+  - cohere.embed-multilingual-v3
 
-2. A language model (one of):
-   - anthropic.claude-3-7-sonnet-20250219-v1:0
-   - anthropic.claude-3-5-haiku-20241022-v1:0
-   - anthropic.claude-3-sonnet-20240229-v1:0
-   - anthropic.claude-3-haiku-20240307-v1:0
+- **Language Models**: At least one of these models is recommended
+  - anthropic.claude-3-sonnet-20240229-v1:0
+  - anthropic.claude-3-haiku-20240307-v1:0
+  - anthropic.claude-instant-v1
+  - amazon.titan-text-express-v1
 
-You can request access to these models in the AWS Bedrock console under "Model access".
-
-## AWS Region Configuration
-
-By default, the application respects the AWS region configuration in your AWS profile. If you have a preferred region, set it with:
-
-```bash
-aws configure set region us-west-2
-```
-
-## Troubleshooting
-
-If you encounter issues:
-
-1. Run `--check-only` to verify model access
-2. Make sure your AWS credentials are configured
-3. Check that you have requested access to the models in the AWS Bedrock console
-4. Verify your AWS region settings with `aws configure get region`
-5. Ensure boto3 is updated to at least version 1.28.0
+To enable model access, visit the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/home#/modelaccess) and request access to the required models.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Contributing
 
-Contributions welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request.
