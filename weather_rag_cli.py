@@ -294,14 +294,14 @@ class WeatherDataRAGExplorer:
             
             # Language Model (with fallback)
             print("\n--- Language Model Check ---")
+            
+            # FIXED: Updated model list to use models that support on-demand throughput
             llm_models = [
-                # Claude models you have access to
-                "anthropic.claude-3-7-sonnet-20250219-v1:0",  # Claude 3.7 Sonnet
-                "anthropic.claude-3-5-haiku-20241022-v1:0",   # Claude 3.5 Haiku
-                
-                # Fallback models
+                # Models that support on-demand throughput
                 "anthropic.claude-3-sonnet-20240229-v1:0",
-                "anthropic.claude-3-haiku-20240307-v1:0"
+                "anthropic.claude-3-haiku-20240307-v1:0",
+                "anthropic.claude-instant-v1",
+                "amazon.titan-text-express-v1"
             ]
             
             # Show which language models are available in the account
@@ -317,10 +317,17 @@ class WeatherDataRAGExplorer:
                 if model_id in available_models:
                     print(f"Trying to connect to language model: {model_id}")
                     try:
+                        # FIXED: Added anthropic_version for compatibility
+                        model_kwargs = {"temperature": 0.7, "max_tokens": 1000}
+                        
+                        # Add anthropic_version for Anthropic models
+                        if "anthropic" in model_id:
+                            model_kwargs["anthropic_version"] = "bedrock-2023-05-31"
+                            
                         llm = ChatBedrock(
                             client=bedrock_runtime,
                             model_id=model_id,
-                            model_kwargs={"temperature": 0.7, "max_tokens": 1000}
+                            model_kwargs=model_kwargs
                         )
                         print(f"✓ Successfully connected to language model: {model_id}")
                         break
@@ -628,13 +635,13 @@ class WeatherDataRAGExplorer:
         
         return True
 
-    def query_weather_data(self, query: str, top_k: int = 5) -> str:
+    def query_weather_data(self, query: str, top_k: int = None) -> str:
         """
         Perform semantic search and generate RAG response
         
         Args:
             query (str): User's natural language query
-            top_k (int): Number of top results to retrieve
+            top_k (int, optional): Number of top results to retrieve. If None, use all records.
         
         Returns:
             str: RAG-enhanced response
@@ -644,6 +651,13 @@ class WeatherDataRAGExplorer:
         
         print(f"\nProcessing query: '{query}'")
         
+        # Determine how many records to use
+        if top_k is None:
+            top_k = len(self.weather_data)
+            print(f"Using all available records ({top_k} total)")
+        else:
+            print(f"Searching for top {top_k} relevant records...")
+        
         # Embed query
         try:
             print("Embedding query...")
@@ -651,7 +665,6 @@ class WeatherDataRAGExplorer:
             query_embedding = self.embedding_model.embed_documents([query])[0]
             
             # Search in FAISS index
-            print(f"Searching for top {top_k} relevant records...")
             D, I = self.faiss_index.search(
                 np.array([query_embedding]), 
                 top_k
@@ -668,8 +681,81 @@ class WeatherDataRAGExplorer:
                         record_str += f"{col}: {record[col]}, "
                     retrieved_docs.append(record_str)
             
-            # Prepare context for RAG
-            context = "\n".join(retrieved_docs)
+            # Prepare context for RAG - handling potentially large context
+            # For large contexts, we'll summarize the data first
+            if len(retrieved_docs) > 50:
+                print(f"Retrieved {len(retrieved_docs)} records, summarizing data for better processing...")
+                
+                # Convert retrieved records to DataFrame for analysis
+                records_list = []
+                for i, idx in enumerate(I[0]):
+                    if idx >= 0 and idx < len(self.weather_data):
+                        records_list.append(self.weather_data.iloc[idx].to_dict())
+                
+                # Create DataFrame from all retrieved records
+                import pandas as pd
+                all_records_df = pd.DataFrame(records_list)
+                
+                # Generate statistics and summaries
+                context_parts = []
+                
+                # Add general statistics
+                context_parts.append(f"Total records: {len(all_records_df)}")
+                
+                # Handle date information if present
+                if 'DATE' in all_records_df.columns:
+                    all_records_df['DATE'] = pd.to_datetime(all_records_df['DATE'])
+                    date_min = all_records_df['DATE'].min()
+                    date_max = all_records_df['DATE'].max()
+                    context_parts.append(f"Date range: {date_min} to {date_max}")
+                    
+                    # Add monthly aggregations if spanning multiple months
+                    if date_min.month != date_max.month or date_min.year != date_max.year:
+                        try:
+                            all_records_df['month'] = all_records_df['DATE'].dt.month
+                            all_records_df['year'] = all_records_df['DATE'].dt.year
+                            
+                            # Group by month and calculate statistics
+                            if 'PRCP_MEAN' in all_records_df.columns:
+                                monthly_prcp = all_records_df.groupby(['year', 'month'])['PRCP_MEAN'].agg(['mean', 'min', 'max', 'count'])
+                                context_parts.append("Monthly precipitation statistics:")
+                                for idx, row in monthly_prcp.iterrows():
+                                    context_parts.append(f"  {idx[0]}-{idx[1]:02d}: Avg={row['mean']:.2f}, Min={row['min']:.2f}, Max={row['max']:.2f}, Records={row['count']}")
+                            
+                            # Temperature statistics if available
+                            if 'TMAX' in all_records_df.columns and 'TMIN' in all_records_df.columns:
+                                monthly_temp = all_records_df.groupby(['year', 'month']).agg({
+                                    'TMAX': ['mean', 'min', 'max'], 
+                                    'TMIN': ['mean', 'min', 'max']
+                                })
+                                context_parts.append("Monthly temperature statistics:")
+                                for idx, row in monthly_temp.iterrows():
+                                    max_data = row['TMAX']
+                                    min_data = row['TMIN']
+                                    context_parts.append(
+                                        f"  {idx[0]}-{idx[1]:02d}: TMAX Avg={max_data['mean']:.2f}, Range=({max_data['min']:.2f}-{max_data['max']:.2f}), "
+                                        f"TMIN Avg={min_data['mean']:.2f}, Range=({min_data['min']:.2f}-{min_data['max']:.2f})"
+                                    )
+                        except Exception as e:
+                            print(f"Error creating monthly statistics: {e}")
+                
+                # Precipitation statistics if available
+                if 'PRCP_MEAN' in all_records_df.columns:
+                    prcp_mean = all_records_df['PRCP_MEAN'].mean()
+                    prcp_max = all_records_df['PRCP_MAX'].max()
+                    prcp_min = all_records_df['PRCP_MIN'].min()
+                    context_parts.append(f"Precipitation: Mean={prcp_mean:.2f}, Max={prcp_max:.2f}, Min={prcp_min:.2f}")
+                
+                # Add top 20 records for reference
+                context_parts.append("\nSample of 20 individual records:")
+                for i in range(min(20, len(retrieved_docs))):
+                    context_parts.append(retrieved_docs[i])
+                
+                # Join all context parts
+                context = "\n".join(context_parts)
+            else:
+                # If we have a manageable number of records, use them all directly
+                context = "\n".join(retrieved_docs)
             
             # Generate response
             if self.llm:
@@ -686,7 +772,8 @@ class WeatherDataRAGExplorer:
                         {query}
                         
                         Provide a comprehensive and informative response based on the available data.
-                        If the data doesn't contain information to answer the query completely, be clear about what you can and cannot determine from the available records."""
+                        If the data doesn't contain information to answer the query completely, be clear about what you can and cannot determine from the available records.
+                        When appropriate, include statistical observations and trends."""
                     )
                     
                     # Create a chain with prompt, LLM, and output parser
@@ -701,19 +788,47 @@ class WeatherDataRAGExplorer:
                     return response
                 except Exception as e:
                     print(f"Error processing query with LLM: {e}")
-                    # Fallback response if LLM fails
-                    response = (
-                        "Unable to generate AI response due to model access issues. "
-                        "Here are the most relevant weather records found:\n\n" + context
-                    )
+                    # Improved fallback response with more detailed error handling
+                    error_msg = str(e)
+                    if "ValidationException" in error_msg and "on-demand throughput isn't supported" in error_msg:
+                        print("Error is related to model throughput configuration")
+                        response = (
+                            "Unable to use the selected AWS Bedrock model due to throughput configuration issues.\n"
+                            "Here's a summary of the weather records found:\n\n"
+                        )
+                        # Add a more condensed version of the context
+                        if len(retrieved_docs) > 10:
+                            response += "\n".join(context.split("\n")[:15])  # First 15 lines
+                            response += "\n\n[...additional records omitted for brevity...]"
+                        else:
+                            response += context
+                    else:
+                        response = (
+                            "Unable to generate AI response. Error: " + str(e) + "\n"
+                            "Here's a summary of the weather records found:\n\n"
+                        )
+                        # Add a more condensed version of the context
+                        if len(retrieved_docs) > 10:
+                            response += "\n".join(context.split("\n")[:15])  # First 15 lines
+                            response += "\n\n[...additional records omitted for brevity...]"
+                        else:
+                            response += context
                     return response
             else:
                 # Simple fallback response
                 print("No LLM available - providing basic response")
                 response = (
                     "AI language model not available. "
-                    "Here are the most relevant records based on your query:\n\n" + context
+                    "Here's a summary of the relevant records based on your query:\n\n"
                 )
+                
+                # Add a condensed version of the context
+                if len(retrieved_docs) > 10:
+                    response += "\n".join(context.split("\n")[:15])  # First 15 lines
+                    response += "\n\n[...additional records omitted for brevity...]"
+                else:
+                    response += context
+                    
                 return response
         
         except Exception as e:
@@ -726,7 +841,8 @@ class WeatherDataRAGExplorer:
 @click.option('--year', default=2022, help='Year of weather data to analyze')
 @click.option('--local-file', default=None, help='Path to local CSV file')
 @click.option('--check-only', is_flag=True, help='Only check Bedrock access without running the application')
-def cli(year, local_file, check_only):
+@click.option('--use-all-records', is_flag=True, help='Process all records instead of just top matches')
+def cli(year, local_file, check_only, use_all_records):
     """
     Weather Data RAG Explorer CLI
     
@@ -908,16 +1024,14 @@ def cli(year, local_file, check_only):
                     print("\n❌ No embedding models available")
                     raise Exception("No embedding models available - RAG cannot function")
                 
-                # Find a language model (optional for check)
+                # FIXED: Updated LLM models list here too
                 print("\n--- Language Model Check ---")
                 llm_models = [
-                    # Claude models you have access to
-                    "anthropic.claude-3-7-sonnet-20250219-v1:0",  # Claude 3.7 Sonnet
-                    "anthropic.claude-3-5-haiku-20241022-v1:0",   # Claude 3.5 Haiku
-                    
-                    # Fallback models
+                    # Models that support on-demand throughput
                     "anthropic.claude-3-sonnet-20240229-v1:0",
-                    "anthropic.claude-3-haiku-20240307-v1:0"
+                    "anthropic.claude-3-haiku-20240307-v1:0",
+                    "anthropic.claude-instant-v1",
+                    "amazon.titan-text-express-v1"
                 ]
                 
                 llm = None
@@ -926,10 +1040,17 @@ def cli(year, local_file, check_only):
                         print(f"✓ Language model {model_id} is available in your account")
                         print(f"Trying to connect to language model: {model_id}")
                         try:
+                            # FIXED: Added anthropic_version parameter for Anthropic models
+                            model_kwargs = {"temperature": 0.7, "max_tokens": 1000}
+                            
+                            # Add anthropic_version for Anthropic models
+                            if "anthropic" in model_id:
+                                model_kwargs["anthropic_version"] = "bedrock-2023-05-31"
+                                
                             llm = ChatBedrock(
                                 client=bedrock_runtime,
                                 model_id=model_id,
-                                model_kwargs={"temperature": 0.7, "max_tokens": 1000}
+                                model_kwargs=model_kwargs
                             )
                             print(f"✓ Successfully connected to language model: {model_id}")
                             break
@@ -975,6 +1096,11 @@ def cli(year, local_file, check_only):
         print("Ask questions about the weather data (type 'exit' to quit)")
         print("Example: What was the average precipitation in July?")
         print("Example: Which month had the highest temperatures?")
+        if use_all_records:
+            print("Processing all records for each query (comprehensive mode)")
+        else:
+            print("Processing top 5 relevant records for each query (default mode)")
+        print("Type 'toggle mode' to switch between comprehensive and default modes")
         print("-" * 50)
         
         while True:
@@ -984,10 +1110,20 @@ def cli(year, local_file, check_only):
             if query.lower() in ['exit', 'quit', 'q']:
                 break
             
+            # Toggle mode command
+            if query.lower() in ['toggle mode', 'switch mode']:
+                use_all_records = not use_all_records
+                print(f"\n✓ {'Comprehensive mode' if use_all_records else 'Default mode'} activated")
+                print(f"Now using {'all' if use_all_records else 'top 5'} records for each query")
+                continue
+                
             # Process query
             try:
                 print("\n🤖 AI Response:")
-                response = explorer.query_weather_data(query)
+                if use_all_records:
+                    response = explorer.query_weather_data(query, top_k=None)  # Use all records
+                else:
+                    response = explorer.query_weather_data(query, top_k=5)     # Use top 5 records
                 print(response)
                 print("-" * 50)
             
