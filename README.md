@@ -4,7 +4,17 @@ An AI-powered tool for exploring and analyzing historical weather data using AWS
 
 ## Overview
 
-Weather RAG Explorer leverages AWS Bedrock's foundation models to provide intelligent analysis of weather data. The application can process precipitation data from NOAA's open datasets or from local files, allowing meteorologists, researchers, and weather enthusiasts to query weather patterns using natural language.
+Weather RAG Explorer leverages AWS Bedrock's foundation models to provide intelligent analysis of weather data. The application processes precipitation data from NOAA's Global Precipitation Climatology Project (GPCP) daily dataset or from local files, allowing meteorologists, researchers, and weather enthusiasts to query precipitation patterns using natural language.
+
+### Dataset Information
+
+By default, the application uses NOAA's GPCP daily precipitation dataset, which includes:
+- Daily precipitation values
+- Geographic coordinates (latitude/longitude)
+- Global coverage with spatial resolution
+- Data organized by date
+
+If no external data is available, the application generates sample data that includes both precipitation and temperature fields, but when using real NOAA data, only precipitation measurements are available.
 
 ## Features
 
@@ -110,6 +120,55 @@ The application requires access to the following types of AWS Bedrock models:
   - amazon.titan-text-express-v1
 
 To enable model access, visit the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/home#/modelaccess) and request access to the required models.
+
+### Example Questions
+
+The dataset primarily contains precipitation data with geographic coordinates. Here are suitable questions:
+
+Default mode works best with specific questions:
+- "What was the precipitation amount on July 3, 2022?"
+- "Compare the precipitation levels between July 2-3, 2022."
+- "What was the maximum precipitation recorded on a single day?"
+
+Comprehensive mode works well with broader questions:
+- "Which month had the highest precipitation averages?"
+- "What was the precipitation pattern throughout summer?"
+- "Is there a correlation between latitude and precipitation amounts?"
+- "Were there any periods of unusually high precipitation?"
+
+## Future Enhancements
+
+### Vector Database Caching
+A planned enhancement is to implement local caching of the FAISS vector database:
+- Save embeddings to disk after generation
+- Load cached embeddings on startup when using the same data source
+- Validate cache to ensure data consistency
+- Add command-line options to force regeneration
+- Significantly reduce startup time for repeated analyses
+
+### Data Visualization
+Future versions could include visualization capabilities:
+- Generate charts and graphs of precipitation patterns
+- Create temperature trend visualizations
+- Map geographic distribution of weather phenomena
+- Interactive visualizations for exploring seasonal variations
+- Export capabilities for reports and presentations
+
+### Advanced Filtering
+Additional filtering capabilities could enhance data analysis:
+- Filter by geographic region
+- Set custom thresholds for precipitation or temperature extremes
+- Focus analysis on specific weather phenomena
+- Comparative analysis between different years
+- Anomaly detection for unusual weather patterns
+
+### Export and Reporting
+Improved export functionality:
+- Save analysis results to structured formats (CSV, JSON)
+- Generate PDF reports with key findings
+- Email scheduling for regular weather analysis
+- Integration with data warehousing solutions
+- Automated alerts for significant weather events
 
 ## License
 
