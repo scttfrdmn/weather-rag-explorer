@@ -1,100 +1,122 @@
 # Weather Data RAG Explorer
 
-## Project Overview
+## 🚀 Development Environment Setup
 
-A CLI-based weather data exploration tool that uses Retrieval-Augmented Generation (RAG) to provide intelligent insights into historical climate data.
+### Prerequisites
 
-## 🌐 Key Features
+- Python Version Management Tool (pyenv recommended)
+- Rust compiler
+- AWS Account (optional, for full functionality)
 
-- AI-powered natural language querying
-- Access to NOAA Global Historical Climatology Network (GHCN) Daily Dataset
-- Semantic search across historical weather records
-- Interactive CLI interface
+### 1. Install Python Version Management
 
-## 🚀 Prerequisites
-
-- Python 3.8+
-- AWS Account
-- AWS Bedrock Access
-- AWS CLI Configured
-
-## 📦 Installation
-
-### 1. Clone the Repository
-
+#### macOS (Homebrew)
 ```bash
-git clone https://github.com/yourusername/weather-rag-explorer.git
-cd weather-rag-explorer
+# Install pyenv
+brew install pyenv
+
+# Add pyenv to shell
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
+echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
+echo 'eval "$(pyenv init --path)"' >> ~/.zshrc
+echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+
+# Reload shell
+source ~/.zshrc
 ```
 
-### 2. Set Up Virtual Environment
+#### Linux
+```bash
+# Install dependencies
+sudo apt-get update
+sudo apt-get install make build-essential libssl-dev zlib1g-dev \
+    libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+
+# Install pyenv
+curl https://pyenv.run | bash
+
+# Add to shell (adjust for your shell, e.g., .bashrc or .zshrc)
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+```
+
+### 2. Install Python and Create Virtual Environment
 
 ```bash
+# Install Python 3.12
+pyenv install 3.12.2
+
+# Set local Python version for the project
+pyenv local 3.12.2
+
 # Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # Unix/macOS
+# or
+venv\Scripts\activate  # Windows
 ```
 
-### 3. Install Dependencies
+### 3. Install Project Dependencies
 
 ```bash
-# Install required packages
+# Ensure virtual environment is activated
+pip install --upgrade pip
+
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install project dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Configure AWS Credentials
+## 🌟 Project Overview
 
-```bash
-# Configure AWS CLI
-aws configure
-
-# Ensure you have the necessary Bedrock permissions
-```
+A CLI-based weather data exploration tool using Retrieval-Augmented Generation (RAG) to provide intelligent insights into historical climate data.
 
 ## 🖥️ Running the Application
 
 ```bash
-# Run the CLI application for the current year (2022 by default)
+# Ensure virtual environment is activated
 python weather_rag_cli.py
 
 # Specify a different year
 python weather_rag_cli.py --year 2020
 ```
 
-## 🌟 Example Queries
+## 🛠️ Development Workflow
 
-- "What were the most extreme temperature days in Phoenix during 2022?"
-- "Describe precipitation patterns this year"
-- "Find the hottest and coldest days"
-- "Compare summer temperatures across different stations"
+```bash
+# Activate virtual environment
+source venv/bin/activate
 
-## 🔍 How It Works
+# Deactivate when done
+deactivate
+```
 
-The application uses:
-- AWS Bedrock Claude 3 for natural language processing
-- FAISS for semantic vector search
-- NOAA's historical weather dataset
+## 🔍 Troubleshooting
 
-## 🚧 Limitations
+### Common Issues
+- Ensure correct Python version is used
+- Verify virtual environment is activated
+- Check Rust installation
+- Confirm all dependencies are installed
 
-- Requires AWS Bedrock subscription
-- Data availability depends on NOAA dataset
-- Semantic search accuracy varies with query complexity
+## 📦 Dependencies
+- Python 3.12.x
+- Rust
+- AWS Bedrock (optional)
 
 ## 🤝 Contributing
-
 1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+2. Set up development environment
+3. Create feature branch
+4. Commit changes
+5. Push and create Pull Request
 
 ## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-## 🙏 Acknowledgments
-
-- NOAA for the GHCN Daily Dataset
-- Anthropic for Claude 3
-- AWS for Bedrock AI services
+Distributed under the MIT License. See `LICENSE` for details.

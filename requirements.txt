@@ -6,20 +6,21 @@ numpy==1.26.4
 
 # AI and RAG Components
 langchain==0.1.11
-faiss-cpu==1.7.4
 langchain-text-splitters==0.0.1
+
+# Vector Store and Embedding
+faiss-cpu==1.7.4
+tiktoken==0.5.2
 
 # CLI and Interaction
 click==8.1.7
 
-# Optional: AWS Bedrock Embeddings
-amazon-titan-embedding-model-api==0.1.0
+# Optional: Development Utilities
+rich==13.7.0
 
-# Development and Debugging
-rich==13.7.0  # Enhanced CLI output (optional)
-
-# Type Checking
+# Type Checking and Performance
 typing-extensions==4.10.0
+python-dotenv==1.0.0
 
-# Performance and Utility
-python-dotenv==1.0.0  # For environment variable management
+# Ensure compatibility
+pydantic>=2.6.4,<3.0.0
