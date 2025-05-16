@@ -28,6 +28,8 @@ If no external data is available, the application generates sample data that inc
 
 ## New in This Version
 
+- **Pipx Installation**: Easy global installation using pipx for better isolation and dependency management
+- **Data Cleaning**: Automated validation and cleaning of weather data to improve RAG quality
 - **Comprehensive Mode**: Now supports analyzing all available records instead of just the top 5 matches
 - **Mode Switching**: Toggle between comprehensive and default modes during runtime
 - **Statistical Summaries**: Automatically calculates monthly averages and other statistics for large datasets
@@ -41,6 +43,46 @@ If no external data is available, the application generates sample data that inc
 - Required Python packages: boto3, pandas, numpy, faiss, netCDF4, xarray, s3fs, click, rich, langchain
 
 ## Installation
+
+### Option 1: Using pipx (Recommended)
+
+[pipx](https://pypa.github.io/pipx/) is the recommended installation method as it creates an isolated environment for the application while making it available globally in your command line:
+
+1. Install pipx if you don't have it already:
+```bash
+# On macOS
+brew install pipx
+pipx ensurepath
+
+# On Linux
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+
+# On Windows
+pip install --user pipx
+```
+
+2. Install the Weather RAG Explorer directly from GitHub:
+```bash
+pipx install git+https://github.com/yourusername/weather-rag-explorer.git
+```
+
+3. Configure AWS credentials:
+```bash
+aws configure
+```
+
+After installation, you can run the application from anywhere with:
+```bash
+weather-rag
+```
+
+To check your AWS Bedrock access without running the full application:
+```bash
+weather-rag-check-bedrock
+```
+
+### Option 2: Traditional Installation
 
 1. Clone this repository:
 ```bash
@@ -58,9 +100,22 @@ pip install -r requirements.txt
 aws configure
 ```
 
+4. (Optional) For developer installation:
+```bash
+pip install -e .
+```
+
 ## Usage
 
 ### Basic Usage
+
+#### When installed with pipx:
+
+```bash
+weather-rag
+```
+
+#### Traditional installation:
 
 ```bash
 python weather_rag_cli.py
@@ -69,6 +124,29 @@ python weather_rag_cli.py
 This will start the application in default mode, which analyzes the top 5 most relevant records for each query.
 
 ### Advanced Options
+
+#### When installed with pipx:
+
+```bash
+# Start in comprehensive mode (analyze all records)
+weather-rag --use-all-records
+
+# Check Bedrock model access without running the application
+weather-rag --check-only
+# or use the dedicated command
+weather-rag-check-bedrock
+
+# Specify a different year of data to analyze
+weather-rag --year 2021
+
+# Use a local CSV file instead of fetching data from AWS S3
+weather-rag --local-file path/to/your/data.csv
+
+# Skip data cleaning and validation
+weather-rag --skip-cleaning
+```
+
+#### Traditional installation:
 
 ```bash
 # Start in comprehensive mode (analyze all records)
@@ -82,6 +160,9 @@ python weather_rag_cli.py --year 2021
 
 # Use a local CSV file instead of fetching data from AWS S3
 python weather_rag_cli.py --local-file path/to/your/data.csv
+
+# Skip data cleaning and validation
+python weather_rag_cli.py --skip-cleaning
 ```
 
 ### Interactive Commands

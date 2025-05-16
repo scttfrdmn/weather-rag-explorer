@@ -10,7 +10,16 @@ import faiss
 import netCDF4
 import xarray as xr
 import s3fs
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+# Import the weather data cleaner
+try:
+    from weather_data_cleaner import clean_weather_data
+except ImportError:
+    # For direct script execution without installation
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent))
+    from weather_data_cleaner import clean_weather_data
 
 # Modern imports to replace pkg_resources
 try:
@@ -52,19 +61,23 @@ def is_version_less_than(v1, v2):
         return False
 
 class WeatherDataRAGExplorer:
-    def __init__(self, year: int = 2022, local_file: str = None):
+    def __init__(self, year: int = 2022, local_file: str = None, clean_data: bool = True):
         """
         Initialize AWS Bedrock client and RAG components
         
         Args:
             year (int): Year of weather data to load
             local_file (str): Path to local CSV file
+            clean_data (bool): Whether to clean the data before processing
         """
         # Rich console for enhanced output
         self.console = Console()
         
         # Selected year
         self.selected_year = year
+        
+        # Clean data flag
+        self.clean_data = clean_data
         
         # Initialize Bedrock components
         self.bedrock_runtime, self.embedding_model, self.llm = self._initialize_bedrock_components()
@@ -387,24 +400,41 @@ class WeatherDataRAGExplorer:
         """
         print("\n=== Loading Weather Data ===")
         
+        data = None
+        
         # Try local file first
         if local_file and os.path.exists(local_file):
             try:
                 print(f"Loading data from local file: {local_file}")
-                return pd.read_csv(local_file)
+                data = pd.read_csv(local_file)
             except Exception as e:
                 print(f"Error loading local file: {e}")
         
-        # Try AWS S3 precipitation data
-        try:
-            print("Loading data from AWS S3...")
-            return self._fetch_aws_s3_data()
-        except Exception as e:
-            print(f"AWS S3 data fetch failed: {e}")
+        # Try AWS S3 precipitation data if local file didn't work
+        if data is None:
+            try:
+                print("Loading data from AWS S3...")
+                data = self._fetch_aws_s3_data()
+            except Exception as e:
+                print(f"AWS S3 data fetch failed: {e}")
         
-        # Fallback to sample data
-        print("Using generated sample weather data")
-        return self._generate_sample_data()
+        # Fallback to sample data if all else fails
+        if data is None:
+            print("Using generated sample weather data")
+            data = self._generate_sample_data()
+        
+        # Clean the data if enabled
+        if self.clean_data and data is not None:
+            try:
+                print("Cleaning and validating weather data...")
+                data = clean_weather_data(data, verbose=True)
+                print(f"Data cleaning complete. Final data shape: {data.shape}")
+            except Exception as e:
+                print(f"Warning: Data cleaning failed, using raw data: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        return data
 
     def _fetch_aws_s3_data(self):
         """
@@ -842,7 +872,8 @@ class WeatherDataRAGExplorer:
 @click.option('--local-file', default=None, help='Path to local CSV file')
 @click.option('--check-only', is_flag=True, help='Only check Bedrock access without running the application')
 @click.option('--use-all-records', is_flag=True, help='Process all records instead of just top matches')
-def cli(year, local_file, check_only, use_all_records):
+@click.option('--skip-cleaning', is_flag=True, help='Skip data cleaning and validation')
+def cli(year, local_file, check_only, use_all_records, skip_cleaning):
     """
     Weather Data RAG Explorer CLI
     
@@ -1082,7 +1113,7 @@ def cli(year, local_file, check_only, use_all_records):
     # Regular operation (not check-only mode)
     try:
         print("\nInitializing Weather Data RAG Explorer...")
-        explorer = WeatherDataRAGExplorer(year, local_file)
+        explorer = WeatherDataRAGExplorer(year, local_file, clean_data=not skip_cleaning)
         
         # Prepare embeddings
         print("\nPreparing vector embeddings for search...")
